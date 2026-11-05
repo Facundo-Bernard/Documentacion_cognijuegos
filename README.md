@@ -23,6 +23,14 @@ Abrí [la guía local](http://127.0.0.1:8765/arquitectura-cognijuegos.html). El 
 - [Componentes de documentación y simuladores](docs/componentes/).
 - [Capturas y procedencia](docs/imagenes/arquitectura/README.md).
 
+## Publicar en Vercel
+
+Importá este repositorio con la raíz del proyecto en la raíz del repositorio (Root Directory vacío o `.`) y la rama de producción `main`.
+
+`vercel.json` configura un sitio estático: preset Other, sin compilación y salida en `.`. La ruta `/` sirve `arquitectura-cognijuegos.html`; los componentes y las capturas se publican bajo `/docs/`. Así se puede abrir el dominio directamente sin un 404. También sigue disponible la URL `/arquitectura-cognijuegos.html`.
+
+Si el proyecto ya estaba importado, el siguiente despliegue debe incluir este archivo. Si el despliegue automático de Git está desactivado, usá Redeploy sobre el último commit. No se necesita instalar React, Vite ni dependencias para esta guía.
+
 Los simuladores y el gráfico son explicativos: no llaman APIs ni modifican partidas reales. La propuesta de motor describe una migración pendiente, no una integración ya desplegada.
 
 ## Criterio de implementación
