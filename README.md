@@ -33,6 +33,10 @@ Si el proyecto ya estaba importado, el siguiente despliegue debe incluir este ar
 
 Los simuladores y el gráfico son explicativos: no llaman APIs ni modifican partidas reales. La propuesta de motor describe una migración pendiente, no una integración ya desplegada.
 
+## Actualización del 6/11/2026
+
+La propuesta vigente está en [Front coordinador sobre el contrato V2](docs/arquitectura/coordinador-frontend-contrato-v2.md). Contrasta el frontend 30a7844 con el OpenAPI de la API 2.0.0: acciones referenciadas, frecuencias y grafos. El diseño inicial se conserva como antecedente.
+
 ## Criterio de implementación
 
 **Cambios necesarios > código y funcionamiento actual > GDD.** El GDD se utiliza como contexto, no como una especificación que reemplace las reglas vigentes.
@@ -47,7 +51,9 @@ Con Node.js:
 node --check docs/componentes/juegos-narrativos.js
 node --check docs/componentes/patron-narrativo.js
 node --check docs/componentes/coordinacion-narrativa.js
+node --check docs/componentes/coordinador-narrativo.js
 node --test docs/componentes/patron-narrativo.test.mjs
+node --test docs/componentes/coordinador-narrativo.test.mjs
 ```
 
 Estas pruebas verifican el laboratorio documental, no la integración del juego real.
