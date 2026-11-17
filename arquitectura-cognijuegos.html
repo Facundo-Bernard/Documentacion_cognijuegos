@@ -20,6 +20,8 @@
 .screenshot figcaption strong{color:var(--ink)}
 .screenshot-hint{display:block;margin-top:5px;font-size:11px;color:var(--accent)}
 @media print{.screenshot{break-inside:avoid}.screenshot img{max-height:none}.screenshot-hint{display:none}}
+
+.flujo-gestores{margin:28px 0}.flujo-fila{display:flex;justify-content:center;align-items:stretch;gap:12px;flex-wrap:wrap}.flujo-caja{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;flex:1 1 200px}.flujo-caja strong,.flujo-caja span{display:block}.flujo-caja span{color:var(--muted);font-size:14px}.flujo-flecha{text-align:center;color:var(--accent);font-size:21px;line-height:1.6}.flujo-etapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.flujo-etapas button[aria-pressed=true]{background:var(--soft);border-color:var(--accent)}.flujo-detalle{margin-top:12px;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:10px}.flujo-detalle h4{margin:0 0 8px}.flujo-detalle p{margin:6px 0}.flujo-controles{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.flujo-paso{font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -114,6 +116,30 @@ android/          → contenedor Capacitor</code></pre></div></div>
 <tr><td>Componentes compartidos</td><td>Fondo, diálogo, títulos, carga y transiciones conservan el diseño y las animaciones.</td></tr>
 </tbody></table></div>
 <p>La pantalla inicial también muestra una introducción y permite elegir la corte. Las estadísticas se abren como una pantalla; el gestor obtiene su información al entrar.</p>
+
+<h3>Gestor principal y subgestores</h3>
+<p>El gestor conserva los datos y pasa a cada etapa lo que necesita mediante props. Las etapas devuelven las elecciones mediante callbacks.</p>
+<div class="flujo-gestores" aria-label="Diagrama de gestores narrativos">
+  <div class="flujo-fila"><div class="flujo-caja"><strong>Backend</strong><span>Resuelve la partida y devuelve el estado confirmado.</span></div><div class="flujo-caja"><strong>narrativeService.ts</strong><span>Transporta consultas y acciones; recupera saldos cuando es necesario.</span></div></div>
+  <div class="flujo-flecha" aria-hidden="true">↕</div>
+  <div class="flujo-fila"><div class="flujo-caja"><strong>KingsCourt.tsx · gestor principal</strong><span>Consulta el setup y la partida, conserva la respuesta, selecciona la pantalla y envía las acciones.</span></div></div>
+  <div class="flujo-flecha" aria-hidden="true">↕</div>
+  <p class="small muted">Datos y callbacks por props ↓ · elecciones del jugador ↑</p>
+  <div class="flujo-etapas" aria-label="Elegí una etapa">
+    <button type="button" data-etapa-flujo="cartas" aria-pressed="true">Selección de cartas</button>
+    <button type="button" data-etapa-flujo="evento" aria-pressed="false">Evento</button>
+    <button type="button" data-etapa-flujo="conversacion" aria-pressed="false">Conversación</button>
+    <button type="button" data-etapa-flujo="resultado" aria-pressed="false">Resultado</button>
+    <button type="button" data-etapa-flujo="estadisticas" aria-pressed="false">Estadísticas</button>
+  </div>
+  <div class="flujo-detalle" id="flujoDetalle" aria-live="polite">
+    <h4>Selección de cartas</h4><p><strong>Recibe:</strong> oferta de cartas o personajes, cantidad y acción de confirmación.</p><p><strong>Devuelve:</strong> la selección; el gestor inicia la partida o envía la carta mensual.</p>
+  </div>
+  <div class="flujo-controles"><button type="button" id="flujoAnterior">← Paso anterior</button><button type="button" id="flujoSiguiente">Siguiente paso →</button><button type="button" id="flujoReiniciar">Reiniciar ejemplo</button></div>
+  <p class="flujo-paso" id="flujoPaso" role="status">Ejemplo simulado · paso 1 de 5</p>
+  <noscript><p>Las etapas están listadas arriba. Activá JavaScript para recorrer el ejemplo interactivo.</p></noscript>
+</div>
+
 </section>
 <section id="patrones" class="section"><span class="number">08 / DISEÑO</span><h2>Flujo de la partida</h2>
 <ol><li>El gestor consulta el desafío y recupera la partida activa cuando existe.</li><li>La etapa muestra la información y envía la elección mediante un callback.</li><li>El gestor solicita la acción y presenta la respuesta del servidor.</li><li>Después del resultado, coordina la transición visual y continúa con la etapa confirmada.</li></ol>
@@ -212,6 +238,36 @@ npm run test.unit -- --run</code></pre><p>Hay pruebas con Vitest y Testing Libra
 <noscript><div class="note">JavaScript está desactivado. El texto principal sigue disponible, pero las fichas de juegos y herramientas interactivas requieren JavaScript.</div></noscript>
 <script>
 'use strict';
+
+// Ejemplo didáctico: los botones no hacen peticiones ni modifican una partida.
+const etapasFlujo = [
+  { id: 'cartas', titulo: 'Selección de cartas', recibe: 'Oferta de cartas o personajes, cantidad y acción de confirmación.', devuelve: 'La selección; el gestor inicia la partida o envía la carta mensual.' },
+  { id: 'evento', titulo: 'Evento', recibe: 'Grafo o evento, recursos confirmados y acción para responder.', devuelve: 'El identificador de la opción; el gestor lo envía al backend y recibe el siguiente nodo.' },
+  { id: 'conversacion', titulo: 'Conversación', recibe: 'Grafo o conversación, personajes y acción para responder.', devuelve: 'La opción elegida; la etapa coordina retratos, diálogo y lectura.' },
+  { id: 'resultado', titulo: 'Resultado', recibe: 'Resultado o nodo final y acciones para continuar o ver estadísticas.', devuelve: 'La intención de continuar; el gestor consulta el estado y coordina el cambio de fondo.' },
+  { id: 'estadisticas', titulo: 'Estadísticas', recibe: 'Estado, historial, corte y datos visuales que el gestor consulta al abrirla.', devuelve: 'La acción de volver al cierre; muestra la crónica y los recursos.' },
+];
+let pasoFlujo = 0;
+function mostrarEtapaFlujo(indice) {
+  pasoFlujo = indice;
+  const etapa = etapasFlujo[indice];
+  const detalle = document.getElementById('flujoDetalle');
+  detalle.replaceChildren();
+  const titulo = document.createElement('h4'); titulo.textContent = etapa.titulo;
+  const recibe = document.createElement('p'); recibe.textContent = `Recibe: ${etapa.recibe}`;
+  const devuelve = document.createElement('p'); devuelve.textContent = `Devuelve: ${etapa.devuelve}`;
+  detalle.append(titulo, recibe, devuelve);
+  document.querySelectorAll('[data-etapa-flujo]').forEach(boton => boton.setAttribute('aria-pressed', String(boton.dataset.etapaFlujo === etapa.id)));
+  document.getElementById('flujoPaso').textContent = `Ejemplo simulado · paso ${indice + 1} de ${etapasFlujo.length}`;
+  document.getElementById('flujoAnterior').disabled = indice === 0;
+  document.getElementById('flujoSiguiente').disabled = indice === etapasFlujo.length - 1;
+}
+document.querySelectorAll('[data-etapa-flujo]').forEach(boton => boton.addEventListener('click', () => mostrarEtapaFlujo(etapasFlujo.findIndex(etapa => etapa.id === boton.dataset.etapaFlujo))));
+document.getElementById('flujoAnterior').addEventListener('click', () => mostrarEtapaFlujo(pasoFlujo - 1));
+document.getElementById('flujoSiguiente').addEventListener('click', () => mostrarEtapaFlujo(pasoFlujo + 1));
+document.getElementById('flujoReiniciar').addEventListener('click', () => mostrarEtapaFlujo(0));
+mostrarEtapaFlujo(0);
+
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const storage={get(k,f){try{return localStorage.getItem(k)||f}catch{return f}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 const repos={fe:'https://github.com/MontiNahuel/juegos-mayores-actualizaciones/blob/0f12188/',be:'https://github.com/Facundo-Bernard/mayores_actualizacionesSIPI-BACK/blob/33cdf8f/'};
