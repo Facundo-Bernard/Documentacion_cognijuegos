@@ -119,25 +119,24 @@ android/          → contenedor Capacitor</code></pre></div></div>
 
 <h3>Gestor principal y subgestores</h3>
 <p>El gestor conserva los datos y pasa a cada etapa lo que necesita mediante props. Las etapas devuelven las elecciones mediante callbacks.</p>
-<div class="flujo-gestores" aria-label="Diagrama de gestores narrativos">
-  <div class="flujo-fila"><div class="flujo-caja"><strong>Backend</strong><span>Resuelve la partida y devuelve el estado confirmado.</span></div><div class="flujo-caja"><strong>narrativeService.ts</strong><span>Transporta consultas y acciones; recupera saldos cuando es necesario.</span></div></div>
-  <div class="flujo-flecha" aria-hidden="true">↕</div>
-  <div class="flujo-fila"><div class="flujo-caja"><strong>KingsCourt.tsx · gestor principal</strong><span>Consulta el setup y la partida, conserva la respuesta, selecciona la pantalla y envía las acciones.</span></div></div>
-  <div class="flujo-flecha" aria-hidden="true">↕</div>
-  <p class="small muted">Datos y callbacks por props ↓ · elecciones del jugador ↑</p>
-  <div class="flujo-etapas" aria-label="Elegí una etapa">
-    <button type="button" data-etapa-flujo="cartas" aria-pressed="true">Selección de cartas</button>
-    <button type="button" data-etapa-flujo="evento" aria-pressed="false">Evento</button>
-    <button type="button" data-etapa-flujo="conversacion" aria-pressed="false">Conversación</button>
-    <button type="button" data-etapa-flujo="resultado" aria-pressed="false">Resultado</button>
-    <button type="button" data-etapa-flujo="estadisticas" aria-pressed="false">Estadísticas</button>
-  </div>
-  <div class="flujo-detalle" id="flujoDetalle" aria-live="polite">
-    <h4>Selección de cartas</h4><p><strong>Recibe:</strong> oferta de cartas o personajes, cantidad y acción de confirmación.</p><p><strong>Devuelve:</strong> la selección; el gestor inicia la partida o envía la carta mensual.</p>
-  </div>
-  <div class="flujo-controles"><button type="button" id="flujoAnterior">← Paso anterior</button><button type="button" id="flujoSiguiente">Siguiente paso →</button><button type="button" id="flujoReiniciar">Reiniciar ejemplo</button></div>
-  <p class="flujo-paso" id="flujoPaso" role="status">Ejemplo simulado · paso 1 de 5</p>
-  <noscript><p>Las etapas están listadas arriba. Activá JavaScript para recorrer el ejemplo interactivo.</p></noscript>
+<div class="flujo-gestores" aria-label="Flujo de gestores narrativos">
+  <div class="flujo-fila"><div class="flujo-caja"><strong>1 · Backend</strong><span>Devuelve setup y estado confirmado; resuelve elecciones, nodos y efectos.</span></div><div class="flujo-caja"><strong>2 · narrativeService.ts</strong><span>Envía consultas y acciones. Completa el estado con otra consulta cuando faltan saldos confirmados.</span></div></div>
+  <div class="flujo-flecha" aria-hidden="true">↕ consultas, acciones y respuestas</div>
+  <div class="flujo-caja"><strong>3 · KingsCourt.tsx</strong><span>Solicita datos, conserva estado y corte, decide qué pantalla mostrar y entrega datos y callbacks por props. Si falla una acción, intenta recuperar el estado sin repetirla.</span></div>
+  <div class="flujo-flecha" aria-hidden="true">↓ props &nbsp; · &nbsp; callbacks ↑</div>
+  <div class="tablewrap"><table><thead><tr><th>Etapa</th><th>Datos que recibe</th><th>Qué muestra y devuelve</th></tr></thead><tbody>
+  <tr><td>Preparación y cartas</td><td>Eventos del día, personajes y cartas ofrecidos; en el mes, cartas del draft y mes actual.</td><td>Presenta la introducción y la selección. Devuelve personajes o cartas elegidos; KingsCourt envía sus IDs al iniciar o elegir carta mensual.</td></tr>
+  <tr><td>Evento</td><td>Evento o grafo, recursos, fondo y callback <code>onElegir</code>.</td><td>Presenta el texto y las opciones. Devuelve el ID elegido para avanzar el nodo.</td></tr>
+  <tr><td>Conversación</td><td>Conversación o grafo, personajes y <code>onElegir</code>.</td><td>Coordina retratos, diálogo y opciones; devuelve el ID elegido para avanzar el nodo.</td></tr>
+  <tr><td>Resultado / final</td><td>Resultado, grafo o finalización y callbacks.</td><td>Muestra el desenlace. Continuar consulta el estado y, si corresponde, avanza el mes; el final permite abrir estadísticas.</td></tr>
+  <tr><td>Estadísticas</td><td>Estado, historial y corte consultados al abrir; recursos iniciales, cartas, personajes y finalización.</td><td>Muestra la crónica y los recursos; permite volver al cierre.</td></tr>
+  </tbody></table></div>
+  <p>Al cargar, consulta <code>partida/setup</code>. Si existe partida activa, también consulta estado y corte. Para elegir pantalla prioriza estadísticas, final, transición de fondo, resultado, conversación, evento y draft; si no hay partida, muestra la preparación. El modo adaptado puede elegir automáticamente la primera carta mensual.</p>
+  <h4>Simulación interactiva de una partida</h4><p class="small muted">Ejemplo ficticio: las respuestas y los valores son ilustrativos. No realiza peticiones ni modifica partidas. Las elecciones conducen a respuestas simuladas; el backend real decide qué escena sigue.</p>
+  <div class="flujo-detalle" id="flujoDetalle" aria-live="polite"></div>
+  <div class="flujo-controles" id="flujoAcciones"></div>
+  <p class="flujo-paso" id="flujoPaso" role="status"></p>
+  <noscript><p>Activá JavaScript para recorrer la simulación.</p></noscript>
 </div>
 
 </section>
@@ -239,34 +238,38 @@ npm run test.unit -- --run</code></pre><p>Hay pruebas con Vitest y Testing Libra
 <script>
 'use strict';
 
-// Ejemplo didáctico: los botones no hacen peticiones ni modifican una partida.
-const etapasFlujo = [
-  { id: 'cartas', titulo: 'Selección de cartas', recibe: 'Oferta de cartas o personajes, cantidad y acción de confirmación.', devuelve: 'La selección; el gestor inicia la partida o envía la carta mensual.' },
-  { id: 'evento', titulo: 'Evento', recibe: 'Grafo o evento, recursos confirmados y acción para responder.', devuelve: 'El identificador de la opción; el gestor lo envía al backend y recibe el siguiente nodo.' },
-  { id: 'conversacion', titulo: 'Conversación', recibe: 'Grafo o conversación, personajes y acción para responder.', devuelve: 'La opción elegida; la etapa coordina retratos, diálogo y lectura.' },
-  { id: 'resultado', titulo: 'Resultado', recibe: 'Resultado o nodo final y acciones para continuar o ver estadísticas.', devuelve: 'La intención de continuar; el gestor consulta el estado y coordina el cambio de fondo.' },
-  { id: 'estadisticas', titulo: 'Estadísticas', recibe: 'Estado, historial, corte y datos visuales que el gestor consulta al abrirla.', devuelve: 'La acción de volver al cierre; muestra la crónica y los recursos.' },
-];
-let pasoFlujo = 0;
-function mostrarEtapaFlujo(indice) {
-  pasoFlujo = indice;
-  const etapa = etapasFlujo[indice];
+// Ejemplo ficticio basado en las llamadas y props del gestor; no usa la red.
+const escenasFlujo = {
+  inicio: { titulo: '1 · Carga inicial', peticion: 'KingsCourt → service → GET partida/setup', respuesta: 'SetupPartida: atributos iniciales, personajes y cartas ofrecidos, eventos del día y tiene_partida_activa.', gestor: 'Guarda el setup. Si existe una partida activa, también consulta v2/partida/estado y partida/corte; aquí comenzamos una nueva.', props: 'MuestraEvento recibe eventos_del_dia y onContinuar.', vista: 'La introducción muestra los sucesos del día.', opciones: [['Continuar', 'corte']] },
+  corte: { titulo: '2 · Formar la corte', peticion: 'Sin petición: se usa el setup ya recibido.', respuesta: 'personajes_ofrecidos: personajes con ID, nombre e imagen.', gestor: 'Entrega la oferta, cantidad 3 y onConfirmar; conserva la selección localmente.', props: 'SeleccionarCartas recibe personajes_ofrecidos, cantidad=3 y onConfirmar.', vista: 'El jugador elige tres personajes.', opciones: [['Confirmar corte de ejemplo', 'cartas']] },
+  cartas: { titulo: '3 · Preparar el reino', peticion: 'La confirmación enviará POST v2/partida/iniciar.', respuesta: 'La oferta proviene de cartas_ofrecidas del setup.', gestor: 'Pasa la selección y onConfirmar; al confirmar envía corte_elegida_ids y cartas_iniciales_ids.', props: 'SeleccionarCartas recibe cartas_ofrecidas, cantidad=3 y onConfirmar.', vista: 'El jugador elige tres cartas iniciales.', opciones: [['Iniciar partida', 'draft']] },
+  draft: { titulo: '4 · Respuesta de inicio y draft', peticion: 'POST v2/partida/iniciar → respuesta confirmada.', respuesta: 'Ejemplo: fase_actual=DRAFT_MENSUAL, mes_actual=1, cartas_draft_actual=[carta_a, carta_b], recursos.', gestor: 'recibir conserva el estado; detecta el draft y entrega la oferta. En modo adaptado puede enviar la primera carta automáticamente.', props: 'SeleccionarCartas recibe cartas_draft_actual, cantidad=1 y onConfirmar.', vista: 'Se muestran las cartas mensuales. Elegí una para enviar su ID.', opciones: [['Elegir carta A', 'eventoA'], ['Elegir carta B', 'eventoB']] },
+  eventoA: { titulo: '5 · Carta A confirmada', peticion: 'POST v2/partida/elegir-carta-mes { carta_id: "carta_a" }', respuesta: 'Ejemplo: grafo_actual de tipo evento, nodo con texto y opciones disponibles; recursos confirmados.', gestor: 'recibir conserva la respuesta y selecciona Evento según el grafo.', props: 'Evento recibe grafo, recursos como atributos, fondo y onElegir.', vista: 'Un mensajero pide ayuda. El jugador elige una opción.', opciones: [['Ayudar', 'respuestaEvento'], ['Escuchar primero', 'respuestaEvento']] },
+  eventoB: { titulo: '5 · Carta B confirmada', peticion: 'POST v2/partida/elegir-carta-mes { carta_id: "carta_b" }', respuesta: 'Ejemplo: grafo_actual de tipo evento, nodo con texto y opciones disponibles; recursos confirmados.', gestor: 'recibir conserva la respuesta y selecciona Evento según el grafo.', props: 'Evento recibe grafo, recursos como atributos, fondo y onElegir.', vista: 'Un consejero presenta una propuesta. El jugador elige una opción.', opciones: [['Aceptar', 'respuestaEvento'], ['Consultar', 'respuestaEvento']] },
+  respuestaEvento: { titulo: '6 · Opción enviada', peticion: 'onElegir(opcion_id) → POST v2/partida/avanzar-nodo { opcion_id }.', respuesta: 'Ejemplo: el servidor devuelve el siguiente grafo, esta vez de conversación. El service puede consultar estado si cambia el grafo o faltan saldos finales.', gestor: 'recibir guarda el estado confirmado y selecciona Conversación cuando corresponde.', props: 'Conversacion recibe grafo o conversacion_actual, personajes y onElegir.', vista: 'Se muestran retratos, diálogo y opciones.', opciones: [['Responder al personaje', 'resultado']] },
+  resultado: { titulo: '7 · Nodo final y resultado', peticion: 'onElegir(opcion_id) → POST v2/partida/avanzar-nodo.', respuesta: 'Ejemplo: nodo_actual.es_final=true, texto de resultado e impactos; los saldos provienen del servidor.', gestor: 'recibir guarda la respuesta; el resultado tiene prioridad sobre una escena pendiente.', props: 'Resultado recibe grafo o resultado_actual, y onContinuar.', vista: 'Se presenta el desenlace y sus efectos.', opciones: [['Continuar', 'continuar']] },
+  continuar: { titulo: '8 · Continuar el turno', peticion: 'continuarTurno consulta v2/partida/estado; solo en BALANCE_MES solicita v2/partida/avanzar-mes.', respuesta: 'El servidor confirma la siguiente fase, el mes o una finalización.', gestor: 'Coordina el cambio visual del fondo y presenta la respuesta. El siguiente paso muestra dos posibles respuestas alternativas del servidor.', props: 'Resultado recibe finalizacion y onVerEstadisticas.', vista: 'Si llega una finalización, se muestra el cierre y se ofrecen estadísticas; si llega otro draft, se muestran nuevas cartas.', opciones: [['Simular final y ver estadísticas', 'estadisticas'], ['Simular otro mes', 'draft']] },
+  estadisticas: { titulo: '9 · Estadísticas', peticion: 'Al abrir: GET v2/partida/estado, partida/historial y partida/corte en paralelo.', respuesta: 'EstadoPartida, HistorialPartidaApi y corte confirmados.', gestor: 'Entrega esas respuestas junto con recursos iniciales, cartas, personajes y finalización.', props: 'Estadisticas recibe estado, historial, corte y onVolver.', vista: 'Se muestran la crónica y los recursos. Volver regresa al cierre.', opciones: [['Volver al cierre', 'continuar']] }
+};
+let escenaFlujo = 'inicio';
+let recorridoFlujo = [];
+function mostrarFlujo(id, volver = false) {
+  if (!volver && escenaFlujo !== id) recorridoFlujo.push(escenaFlujo);
+  escenaFlujo = id;
+  const escena = escenasFlujo[id];
   const detalle = document.getElementById('flujoDetalle');
   detalle.replaceChildren();
-  const titulo = document.createElement('h4'); titulo.textContent = etapa.titulo;
-  const recibe = document.createElement('p'); recibe.textContent = `Recibe: ${etapa.recibe}`;
-  const devuelve = document.createElement('p'); devuelve.textContent = `Devuelve: ${etapa.devuelve}`;
-  detalle.append(titulo, recibe, devuelve);
-  document.querySelectorAll('[data-etapa-flujo]').forEach(boton => boton.setAttribute('aria-pressed', String(boton.dataset.etapaFlujo === etapa.id)));
-  document.getElementById('flujoPaso').textContent = `Ejemplo simulado · paso ${indice + 1} de ${etapasFlujo.length}`;
-  document.getElementById('flujoAnterior').disabled = indice === 0;
-  document.getElementById('flujoSiguiente').disabled = indice === etapasFlujo.length - 1;
+  const titulo = document.createElement('h4'); titulo.textContent = escena.titulo; detalle.append(titulo);
+  [['Petición / acción', escena.peticion], ['Respuesta / datos', escena.respuesta], ['Gestor principal', escena.gestor], ['Props a la etapa', escena.props], ['Pantalla y elección', escena.vista]].forEach(([etiqueta, texto]) => {
+    const p = document.createElement('p'); const strong = document.createElement('strong'); strong.textContent = etiqueta + ': '; p.append(strong, document.createTextNode(texto)); detalle.append(p);
+  });
+  const acciones = document.getElementById('flujoAcciones'); acciones.replaceChildren();
+  escena.opciones.forEach(([texto, destino]) => { const boton = document.createElement('button'); boton.type = 'button'; boton.textContent = texto; boton.addEventListener('click', () => mostrarFlujo(destino)); acciones.append(boton); });
+  const atras = document.createElement('button'); atras.type = 'button'; atras.textContent = '← Paso anterior'; atras.disabled = !recorridoFlujo.length; atras.addEventListener('click', () => mostrarFlujo(recorridoFlujo.pop(), true)); acciones.append(atras);
+  const reiniciar = document.createElement('button'); reiniciar.type = 'button'; reiniciar.textContent = 'Reiniciar ejemplo'; reiniciar.addEventListener('click', () => { recorridoFlujo = []; mostrarFlujo('inicio', true); }); acciones.append(reiniciar);
+  document.getElementById('flujoPaso').textContent = 'Simulación local · ' + escena.titulo;
 }
-document.querySelectorAll('[data-etapa-flujo]').forEach(boton => boton.addEventListener('click', () => mostrarEtapaFlujo(etapasFlujo.findIndex(etapa => etapa.id === boton.dataset.etapaFlujo))));
-document.getElementById('flujoAnterior').addEventListener('click', () => mostrarEtapaFlujo(pasoFlujo - 1));
-document.getElementById('flujoSiguiente').addEventListener('click', () => mostrarEtapaFlujo(pasoFlujo + 1));
-document.getElementById('flujoReiniciar').addEventListener('click', () => mostrarEtapaFlujo(0));
-mostrarEtapaFlujo(0);
+mostrarFlujo('inicio');
 
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const storage={get(k,f){try{return localStorage.getItem(k)||f}catch{return f}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
